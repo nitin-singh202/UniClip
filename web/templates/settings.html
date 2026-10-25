@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Settings — Universal Clipboard AI{% endblock %}
+
+{% block content %}
+<div class="settings-shell" style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem;">
+  <!-- Unified Header with Mobile Navigation Toggle -->
+  <header class="dashboard-header">
+    <div class="header-left">
+      <button type="button" class="mobile-nav-toggle" aria-label="Toggle navigation">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div>
+        <div class="app-subtitle">Universal Clipboard AI</div>
+        <h1 class="page-title">Settings & Status</h1>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="sync-indicator {% if is_guest %}status-connected{% else %}status-connected{% endif %}">
+        <span class="status-dot"></span>
+        <span class="status-label">{% if is_guest %}Guest Mode{% else %}Google Synced{% endif %}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Session State Card -->
+  <section class="settings-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+    {% if is_guest %}
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+      <h2 style="font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+        <span>👤</span> Active Session: Guest Mode
+      </h2>
+      <span style="font-size: 0.7rem; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); font-weight: 600;">
+        Local Device Only
+      </span>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.45; margin-bottom: 1rem;">
+      You are running Universal Clipboard AI in <strong>Guest Mode</strong>. Your clipboard history is saved exclusively in this browser's local IndexedDB database. It is not synchronized with Firebase, is not backed up to the cloud, and is not accessible from other devices.
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem; background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.05); padding: 0.85rem; border-radius: var(--radius-sm); margin-bottom: 1rem;">
+      <div style="font-size: 0.8rem; font-weight: 600; color: #a5b4fc;">Want cross-device sync?</div>
+      <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+        Sign in with Google to synchronize your clipboard between your Windows computer and Android phone. Guest entries will remain local and will not be mixed into your Google account.
+      </p>
+      <a href="{{ url_for('login') }}" class="btn btn-primary btn-sm" style="align-self: flex-start; text-decoration: none;">
+        Sign in with Google
+      </a>
+    </div>
+
+    <!-- Clear Guest Session Action -->
+    <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+      <div>
+        <div style="font-size: 0.86rem; font-weight: 600; color: var(--text-primary);">Clear Guest History & Exit</div>
+        <div style="font-size: 0.76rem; color: var(--text-muted);">Permanently removes all guest items stored on this device.</div>
+      </div>
+      <button type="button" id="btn-clear-guest-session" class="btn btn-danger btn-sm">
+        Clear Guest Session
+      </button>
+    </div>
+
+    {% else %}
+    <!-- Authenticated Google Account Details -->
+    <h2 style="font-size: 1.05rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+      <span>👤</span> Authenticated Account
+    </h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; font-size: 0.85rem;">
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase;">Name</div>
+        <div style="font-weight: 600; margin-top: 0.2rem;">{{ current_user.name }}</div>
+      </div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase;">Email</div>
+        <div style="font-weight: 600; margin-top: 0.2rem;">{{ current_user.email }}</div>
+      </div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase;">User UID</div>
+        <div style="font-family: monospace; font-size: 0.78rem; margin-top: 0.2rem; color: #a5b4fc; word-break: break-all;">{{ current_user.uid }}</div>
+      </div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase;">Authentication Method</div>
+        <div style="font-weight: 600; margin-top: 0.2rem;">Google Sign-In (Firebase)</div>
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem; display: flex; justify-content: flex-end;">
+      <form action="{{ url_for('logout') }}" method="POST" style="margin: 0;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-view btn-sm" style="color: var(--color-danger);">
+          Sign out of Google Account
+        </button>
+      </form>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Retention Policy Card -->
+  <section class="settings-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+    <h2 style="font-size: 1.05rem; font-weight: 600; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.5rem;">
+      <span>⏳</span> Retention & Cleanup Policy
+    </h2>
+    <p style="color: var(--text-secondary); font-size: 0.84rem; margin-bottom: 0.85rem; line-height: 1.45;">
+      To prevent unbounded storage and maintain clipboard hygiene across devices, retention is strictly enforced:
+    </p>
+    <div style="background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-sm); padding: 0.85rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+      <div>
+        <div style="font-weight: 600; font-size: 0.9rem;">Maximum History Period</div>
+        <div style="color: var(--text-muted); font-size: 0.78rem;">Older records are automatically excluded and purged.</div>
+      </div>
+      <div style="font-size: 1.1rem; font-weight: 700; color: #34d399; background: var(--color-success-bg); padding: 0.25rem 0.65rem; border-radius: var(--radius-sm);">
+        {{ retention_days }} Days
+      </div>
+    </div>
+  </section>
+
+  <!-- Security & Architecture Card -->
+  <section class="settings-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+    <h2 style="font-size: 1.05rem; font-weight: 600; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.5rem;">
+      <span>🛡️</span> Security & Storage Architecture
+    </h2>
+    <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.65rem; font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.75rem;">
+      <li style="display: flex; gap: 0.5rem;">
+        <span style="color: #34d399;">✓</span>
+        <div><strong>Data Isolation:</strong> Authenticated data is segregated per-user in Firestore. Guest mode data is strictly partitioned in local browser IndexedDB.</div>
+      </li>
+      <li style="display: flex; gap: 0.5rem;">
+        <span style="color: #34d399;">✓</span>
+        <div><strong>No Background Sniffing:</strong> Browser dashboard only accesses the clipboard during explicit copy/paste gestures.</div>
+      </li>
+      <li style="display: flex; gap: 0.5rem;">
+        <span style="color: #34d399;">✓</span>
+        <div><strong>Zero Plaintext Logging:</strong> Credentials, tokens, and clipboard contents are never printed to diagnostic logs or terminal output.</div>
+      </li>
+    </ul>
+  </section>
+</div>
+{% endblock %}

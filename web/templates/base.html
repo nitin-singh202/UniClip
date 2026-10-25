@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="theme-color" content="#0b0f17">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Universal Clip">
+  <title>{% block title %}Universal Clipboard AI{% endblock %}</title>
+  <link rel="manifest" href="{{ url_for('pwa_manifest') }}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <div class="app-container">
+    {% if current_user %}
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar">
+      <div class="brand-section">
+        <div class="brand-icon">📋</div>
+        <span class="brand-title">Universal Clip</span>
+        <span class="brand-badge">AI Sync</span>
+      </div>
+
+      <ul class="nav-menu">
+        <li class="nav-item {% if request.path == url_for('dashboard') %}active{% endif %}">
+          <a href="{{ url_for('dashboard') }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            Dashboard
+          </a>
+        </li>
+        <li class="nav-item {% if request.path == url_for('settings') %}active{% endif %}">
+          <a href="{{ url_for('settings') }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            Settings
+          </a>
+        </li>
+        <li id="pwa-install-item" class="nav-item pwa-install-item" style="display: none;">
+          <a href="#" id="pwa-install-btn" class="pwa-install-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Install App
+          </a>
+        </li>
+      </ul>
+
+      <!-- User Profile & Sign-out -->
+      <div class="user-profile-section">
+        <div class="user-info">
+          <div class="user-avatar">{{ 'G' if current_user.is_guest else (current_user.name[:1]|upper if current_user.name else 'U') }}</div>
+          <div class="user-meta">
+            <div class="user-name">{{ 'Guest Session' if current_user.is_guest else current_user.name }}</div>
+            <div class="user-email">{{ 'Local Device Only' if current_user.is_guest else current_user.email }}</div>
+          </div>
+        </div>
+        <form action="{{ url_for('logout') }}" method="POST" id="signout-form" style="margin: 0;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn-signout" id="sidebar-signout-btn" title="{{ 'End guest session' if current_user.is_guest else 'Sign out' }}" aria-label="{{ 'End guest session' if current_user.is_guest else 'Sign out' }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+    {% endif %}
+
+    <!-- Main Content Block -->
+    <main class="app-main {% if not current_user %}login-main{% endif %}">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- Shared Modals -->
+  <!-- 1. Full Content Inspection Modal -->
+  <div id="view-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="view-modal-title">
+    <div class="modal-box modal-centered">
+      <div class="modal-header">
+        <h3 id="view-modal-title" class="modal-title">Clipboard Entry Details</h3>
+        <button type="button" class="btn-close" data-modal-close aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="view-modal-content" class="modal-full-content"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-view" data-modal-close>Close</button>
+        <button type="button" id="view-modal-copy" class="btn btn-copy" data-content="">
+          <span>📋</span> Copy to Clipboard
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Delete Confirmation Modal (Centered Dialog) -->
+  <div id="delete-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" aria-describedby="delete-modal-desc">
+    <div class="modal-box modal-centered" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 id="delete-modal-title" class="modal-title">Delete clipboard item?</h3>
+        <button type="button" class="btn-close" data-modal-close aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="delete-modal-desc" style="color: var(--text-secondary); font-size: 0.92rem; line-height: 1.5;">
+          This item will be permanently deleted from your synced clipboard history.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-view" data-modal-close>Cancel</button>
+        <button type="button" id="confirm-delete-btn" class="btn btn-danger">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Clear Guest Session Confirmation Modal -->
+  <div id="clear-guest-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="clear-guest-title" aria-describedby="clear-guest-desc">
+    <div class="modal-box modal-centered" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 id="clear-guest-title" class="modal-title">Clear guest session?</h3>
+        <button type="button" class="btn-close" data-modal-close aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="clear-guest-desc" style="color: var(--text-secondary); font-size: 0.92rem; line-height: 1.5;">
+          All clipboard items saved during this guest session will be erased from this device.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-view" data-modal-close>Cancel</button>
+        <button type="button" id="confirm-clear-guest-btn" class="btn btn-danger">
+          Clear & Exit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script>
+    // Register Service Worker safely for PWA support
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js", { scope: "/" })
+          .then((reg) => {
+            // Service worker active and scope bound to root
+          })
+          .catch((err) => {
+            // Non-critical logging in case service workers are disabled (e.g. private mode)
+          });
+      });
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

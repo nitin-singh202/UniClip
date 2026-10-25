@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Environment, Secrets, and Firebase Service Account Keys
+.env
+.env.local
+*.json.secret
+*adminsdk*.json
+serviceAccountKey.json
+*.pem
+
+# Database & local storage
+*.sqlite
+*.db
+*.db-shm
+*.db-wal
+.desktop_watcher.lock
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# Large SDK Archives
+flutter_windows_*.zip
+
+# Firebase Admin private keys - NEVER COMMIT
+*firebase-adminsdk*.json
+*service-account*.json
+*service_account*.json
+*adminsdk*.json
+
+# Local clipboard data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Virtual environments and generated files
+.venv/
+.pytest_cache/
+__pycache__/
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins-dependencies
+
+# Accidental temporary file
+/tatus
+
+# Deprecated standalone Flutter app
+/android/
+/mobile/

@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Clipboard History — Universal Clipboard AI{% endblock %}
+
+{% block content %}
+<div class="dashboard-shell" id="clipboard-app-root" data-is-guest="{{ 'true' if is_guest else 'false' }}">
+  <!-- Header -->
+  <header class="dashboard-header">
+    <div class="header-left">
+      <button type="button" class="mobile-nav-toggle" aria-label="Toggle navigation">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div>
+        <div class="app-subtitle">Universal Clipboard AI</div>
+        <h1 class="page-title">Clipboard History</h1>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <!-- Truthful Sync Status Indicator -->
+      <div id="sync-status-badge" class="sync-indicator status-{{ sync_status }}">
+        <span class="status-dot"></span>
+        <span class="status-label">
+          {% if is_guest %}
+          Guest (Local Only)
+          {% elif sync_status == "connected" %}
+          Firestore Synced
+          {% elif sync_status == "local_ready" %}
+          Session Active
+          {% else %}
+          Offline
+          {% endif %}
+        </span>
+      </div>
+
+      <span class="retention-badge" title="{% if is_guest %}Temporary local session on this device{% else %}Entries are retained for 7 days{% endif %}">
+        {% if is_guest %}Local Session{% else %}7-Day Retention{% endif %}
+      </span>
+    </div>
+  </header>
+
+  <!-- Controls Bar: Search, Add Action & Live Counter -->
+  <div class="controls-bar">
+    <div class="search-wrapper">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input 
+        type="search" 
+        id="search-input" 
+        class="search-input" 
+        placeholder="Search clipboard entries..." 
+        value="{{ search_query }}"
+        autocomplete="off"
+        aria-label="Search clipboard entries"
+      >
+      <button type="button" id="search-clear-btn" class="search-clear-btn" style="display: none;" aria-label="Clear search">&times;</button>
+    </div>
+
+    <div class="controls-right">
+      <button type="button" id="btn-open-add-modal" class="btn btn-primary btn-sm btn-add-entry" title="Add or paste clipboard item">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span class="btn-text-label">Add Entry</span>
+      </button>
+
+      <button type="button" id="mobile-select-all-btn" class="btn btn-view btn-sm mobile-select-all-btn" title="Select all visible entries">
+        Select All
+      </button>
+
+      <div id="entries-count-badge" class="entries-count-badge">
+        {{ total_count }} item{{ 's' if total_count != 1 else '' }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Selection Action Bar -->
+  <div id="bulk-actions-bar" class="bulk-actions-bar" style="display: none;">
+    <div class="bulk-info">
+      <span class="bulk-icon">✓</span>
+      <span id="bulk-selected-count" class="bulk-selected-count">0 items selected</span>
+    </div>
+    <div class="bulk-actions">
+      <button type="button" id="btn-select-all" class="btn btn-secondary btn-sm">Select All</button>
+      <button type="button" id="btn-deselect-all" class="btn btn-secondary btn-sm">Deselect All</button>
+      <button type="button" id="btn-bulk-delete" class="btn btn-danger btn-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        Delete Selected (<span id="bulk-delete-count">0</span>)
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Compact Clipboard Table -->
+  <div class="table-container">
+    <table class="clipboard-table" id="clipboard-table">
+      <thead>
+        <tr>
+          <th class="th-checkbox">
+            <input 
+              type="checkbox" 
+              id="select-all-checkbox" 
+              class="select-all-checkbox" 
+              title="Select all visible entries" 
+              aria-label="Select all entries"
+            >
+          </th>
+          <th class="th-content">Content</th>
+          <th class="th-type">Type</th>
+          <th class="th-time">Copied at</th>
+          <th class="th-expires">Expires in</th>
+          <th class="th-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="clipboard-tbody">
+        {% if entries %}
+          {% for entry in entries %}
+          <tr class="clipboard-row" id="row-{{ entry.id }}" data-id="{{ entry.id }}">
+            <td class="td-checkbox">
+              <input 
+                type="checkbox" 
+                class="entry-checkbox" 
+                data-id="{{ entry.id }}" 
+                aria-label="Select entry"
+              >
+            </td>
+            <td class="td-content">
+              <div class="content-cell" data-view-id="{{ entry.id }}" title="Click to view full content">
+                <span class="content-preview">{{ entry.content }}</span>
+              </div>
+            </td>
+            <td class="td-type">
+              {% if entry.entry_type == 'url' %}
+              <span class="type-tag tag-url">URL</span>
+              {% else %}
+              <span class="type-tag tag-text">Text</span>
+              {% endif %}
+            </td>
+            <td class="td-time">
+              <span class="time-text">{{ entry.created_at | format_ts }}</span>
+            </td>
+            <td class="td-expires">
+              <span class="expiry-text">{{ entry.expires_at | time_left }}</span>
+            </td>
+            <td class="td-actions">
+              <div class="actions-group">
+                <button 
+                  type="button" 
+                  class="action-btn btn-copy" 
+                  data-id="{{ entry.id }}"
+                  data-content="{{ entry.content }}" 
+                  title="Copy full text to clipboard"
+                  aria-label="Copy clipboard entry"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+                <button 
+                  type="button" 
+                  class="action-btn btn-delete" 
+                  data-id="{{ entry.id }}" 
+                  title="Delete entry"
+                  aria-label="Delete entry"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% endif %}
+      </tbody>
+    </table>
+
+    <!-- Empty State -->
+    <div id="table-empty-state" class="table-empty-state" style="{% if entries %}display: none;{% endif %}">
+      <div class="empty-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+        </svg>
+      </div>
+      <div id="empty-title" class="empty-title">
+        {% if search_query %}
+        No matching entries found
+        {% elif is_guest %}
+        No guest items yet
+        {% else %}
+        No clipboard history yet
+        {% endif %}
+      </div>
+      <div id="empty-subtitle" class="empty-subtitle">
+        {% if search_query %}
+        Try clearing your search query to see all synchronized items.
+        {% elif is_guest %}
+        Tap "+ Add Entry" above to save text or links in your temporary local browser session.
+        {% else %}
+        Copy text or a link on your Windows PC and it will appear here automatically.
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Add / Paste Modal (Centered Dialog) -->
+<div id="add-entry-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="add-modal-title">
+  <div class="modal-box modal-centered" style="max-width: 480px;">
+    <div class="modal-header">
+      <h3 id="add-modal-title" class="modal-title">Add to Clipboard</h3>
+      <button type="button" class="btn-close" data-modal-close aria-label="Close modal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+        {% if is_guest %}
+        This entry will be saved in this browser's temporary local IndexedDB storage.
+        {% else %}
+        This entry will be synchronized securely with your cloud clipboard history.
+        {% endif %}
+      </p>
+      <textarea id="add-entry-input" class="add-entry-textarea" placeholder="Type or paste text or URL here..." rows="4" aria-label="Clipboard content to add"></textarea>
+      <div style="margin-top: 0.5rem; display: flex; justify-content: flex-start;">
+        <button type="button" id="btn-paste-clipboard" class="btn btn-view btn-sm">
+          <span>📋</span> Paste from Clipboard
+        </button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-view" data-modal-close>Cancel</button>
+      <button type="button" id="btn-save-new-entry" class="btn btn-primary">
+        Add Entry
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Delete Confirmation Modal (Centered Dialog) -->
+<div id="bulk-delete-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="bulk-modal-title" aria-describedby="bulk-modal-desc">
+  <div class="modal-box modal-centered" style="max-width: 440px;">
+    <div class="modal-header">
+      <h3 id="bulk-modal-title" class="modal-title">Delete selected items?</h3>
+      <button type="button" class="btn-close" data-modal-close aria-label="Close modal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="bulk-modal-desc" style="color: var(--text-secondary); font-size: 0.92rem; line-height: 1.5;">
+        You're about to delete <strong id="bulk-modal-count" style="color: var(--text-primary);">0</strong> selected items. This action cannot be undone.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-view" data-modal-close>Cancel</button>
+      <button type="button" id="confirm-bulk-delete-btn" class="btn btn-danger">
+        Delete selected
+      </button>
+    </div>
+  </div>
+</div>
+
+<script id="initial-clipboard-entries" type="application/json">
+  {{ entries | tojson | safe }}
+</script>
+{% endblock %}

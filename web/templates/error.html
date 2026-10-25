@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} — Universal Clipboard AI{% endblock %}
+
+{% block content %}
+<div style="min-height: 70vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem;">
+  <div class="state-box" style="max-width: 480px; width: 100%; padding: 2.5rem 2rem;">
+    <div class="state-icon" style="color: var(--color-danger); background: var(--color-danger-bg); font-weight: 700;">
+      {{ code }}
+    </div>
+    <h1 class="state-title">{{ title }}</h1>
+    <p class="state-desc">{{ message }}</p>
+    <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+      {% if current_user %}
+      <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Return to Dashboard</a>
+      {% else %}
+      <a href="{{ url_for('login') }}" class="btn btn-primary">Return to Sign In</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
