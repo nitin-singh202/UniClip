@@ -373,10 +373,11 @@ def create_app(config_class=Config) -> Flask:
             return jsonify({"error": "Internal Server Error"}), 500
         return render_template("error.html", code=500, title="Server Error", message="An unexpected error occurred. Please try again later."), 500
 
-    # Start the desktop clipboard watcher in background if live and not already running
+    # Start the desktop clipboard watcher in background if live and not in load test mode or production
     if app.config.get("USE_SQLITE", False) and not app.config.get("TESTING", False):
-        if not app.config.get("DEBUG", False) or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-            _start_embedded_watcher()
+        if not app.config.get("LOAD_TEST_MODE", False) and (app.config.get("FLASK_ENV") or "").lower() != "production":
+            if not app.config.get("DEBUG", False) or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+                _start_embedded_watcher()
 
     return app
 
