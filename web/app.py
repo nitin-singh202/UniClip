@@ -337,8 +337,11 @@ def create_app(config_class=Config) -> Flask:
         if not content or not isinstance(content, str) or not content.strip():
             return jsonify({"error": "Content is required"}), 400
 
-        entry = ClipboardService.add_entry(user["uid"], content=content.strip())
-        return jsonify({"success": True, "entry": entry}), 201
+        try:
+            entry = ClipboardService.add_entry(user["uid"], content=content.strip())
+            return jsonify({"success": True, "entry": entry}), 201
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
 
     # ------------------ Error Handlers ------------------
 

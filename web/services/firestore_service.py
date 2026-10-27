@@ -22,6 +22,22 @@ class FirestoreService:
     def get_client(cls):
         """Lazy-initialize and return the Firestore client singleton."""
         global _firestore_client, _initialized
+
+        # Fail-closed guard: Never initialize or access Firestore client in load test mode
+        if os.environ.get("LOAD_TEST_MODE", "0").lower() in ("1", "true", "yes") or \
+           os.environ.get("DISABLE_FIRESTORE", "0").lower() in ("1", "true", "yes"):
+            logger.debug("Firestore client access strictly blocked by env LOAD_TEST_MODE / DISABLE_FIRESTORE.")
+            return None
+
+        try:
+            from flask import current_app, has_app_context
+            if has_app_context():
+                if current_app.config.get("LOAD_TEST_MODE", False) or current_app.config.get("DISABLE_FIRESTORE", False):
+                    logger.debug("Firestore client access strictly blocked by LOAD_TEST_MODE / DISABLE_FIRESTORE.")
+                    return None
+        except Exception:
+            pass
+
         if _firestore_client is not None:
             return _firestore_client
 
@@ -69,6 +85,16 @@ class FirestoreService:
     @classmethod
     def is_available(cls) -> bool:
         """Return True if Firestore client is available and connected."""
+        if os.environ.get("LOAD_TEST_MODE", "0").lower() in ("1", "true", "yes") or \
+           os.environ.get("DISABLE_FIRESTORE", "0").lower() in ("1", "true", "yes"):
+            return False
+        try:
+            from flask import current_app, has_app_context
+            if has_app_context():
+                if current_app.config.get("LOAD_TEST_MODE", False) or current_app.config.get("DISABLE_FIRESTORE", False):
+                    return False
+        except Exception:
+            pass
         return cls.get_client() is not None
 
     @classmethod
@@ -77,6 +103,16 @@ class FirestoreService:
         Upsert a clipboard entry into Firestore under users/{uid}/clipboardEntries/{id}.
         Returns True on success, False on failure.
         """
+        # Fail-closed guard
+        try:
+            from flask import current_app, has_app_context
+            if has_app_context() and current_app.config.get("LOAD_TEST_MODE", False):
+                raise RuntimeError("FAIL-CLOSED GUARD: Prohibited attempt to sync with Cloud Firestore while LOAD_TEST_MODE is active!")
+        except RuntimeError:
+            raise
+        except Exception:
+            pass
+
         db = cls.get_client()
         if not db:
             return False
@@ -117,6 +153,16 @@ class FirestoreService:
         """
         Delete an entry from Firestore.
         """
+        # Fail-closed guard
+        try:
+            from flask import current_app, has_app_context
+            if has_app_context() and current_app.config.get("LOAD_TEST_MODE", False):
+                raise RuntimeError("FAIL-CLOSED GUARD: Prohibited attempt to delete from Cloud Firestore while LOAD_TEST_MODE is active!")
+        except RuntimeError:
+            raise
+        except Exception:
+            pass
+
         db = cls.get_client()
         if not db or not uid or not entry_id:
             return False
@@ -141,6 +187,15 @@ class FirestoreService:
         Bulk delete entries from Firestore in batches conforming to the 500-operation limit.
         Returns a tuple: (deleted_ids, failed_ids).
         """
+        # Fail-closed guard
+        try:
+            from flask import current_app, has_app_context
+            if has_app_context() and current_app.config.get("LOAD_TEST_MODE", False):
+                raise RuntimeError("FAIL-CLOSED GUARD: Prohibited attempt to bulk delete from Cloud Firestore while LOAD_TEST_MODE is active!")
+        except RuntimeError:
+            raise
+        except Exception:
+            pass
         db = cls.get_client()
         if not db or not uid or not entry_ids:
             return [], list(entry_ids)

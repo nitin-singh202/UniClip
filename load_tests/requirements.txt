@@ -1,0 +1,3 @@
+# UniClip Load Testing Suite Requirements
+# Open-source, local-first performance testing tool
+locust>=2.20.0

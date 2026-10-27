@@ -94,7 +94,26 @@ class ClipboardService:
         return False
 
     @classmethod
+    def _is_firestore_disabled(cls) -> bool:
+        from flask import has_app_context, current_app
+        if has_app_context():
+            return bool(
+                current_app.config.get("LOAD_TEST_MODE", False) or
+                current_app.config.get("DISABLE_FIRESTORE", False)
+            )
+        return False
+
+    @classmethod
     def _get_db_path(cls) -> Path:
+        from flask import has_app_context, current_app
+        if has_app_context():
+            custom_path = current_app.config.get("SQLITE_DB_PATH")
+            if custom_path:
+                p = Path(custom_path).resolve()
+                if not p.exists():
+                    from desktop_watcher import ClipboardDatabase
+                    ClipboardDatabase(p)
+                return p
         return Path(__file__).resolve().parent.parent.parent / "clipboard_local.db"
 
     @classmethod
@@ -116,9 +135,14 @@ class ClipboardService:
         now = now_ms or int(time.time() * 1000)
 
         # Sync status: Indicate status truthfully based on cloud connection
-        from .firestore_service import FirestoreService
-        is_cloud_connected = FirestoreService.is_available()
-        sync_status = "connected" if is_cloud_connected else "local_ready"
+        from flask import current_app
+        if cls._is_firestore_disabled():
+            is_cloud_connected = False
+            sync_status = "load_test_isolated" if current_app.config.get("LOAD_TEST_MODE", False) else "local_ready"
+        else:
+            from .firestore_service import FirestoreService
+            is_cloud_connected = FirestoreService.is_available()
+            sync_status = "connected" if is_cloud_connected else "local_ready"
 
         if not cls._use_sqlite():
             user_entries = cls.get_user_store(uid)
@@ -129,10 +153,11 @@ class ClipboardService:
             valid_entries.sort(key=lambda x: x.created_at, reverse=True)
             return [e.to_dict() for e in valid_entries[:limit]], sync_status
 
-        # In live mode: Read directly from local SQLite database (populated by desktop_watcher)
+        # In live mode: Read directly from local SQLite database (populated by desktop_watcher or load test)
         db_file = cls._get_db_path()
         if not db_file.exists():
-            return [], sync_status
+            from desktop_watcher import ClipboardDatabase
+            ClipboardDatabase(db_file)
 
         import sqlite3
         with sqlite3.connect(str(db_file), timeout=5) as conn:
@@ -142,8 +167,8 @@ class ClipboardService:
             conn.execute("INSERT OR REPLACE INTO app_state (key, value) VALUES ('active_user_id', ?)", (uid,))
             conn.commit()
 
-            # If cloud is connected, upload pending local records to Firestore
-            if is_cloud_connected:
+            # If cloud is connected and not disabled, upload pending local records to Firestore
+            if is_cloud_connected and not cls._is_firestore_disabled():
                 cls._sync_pending_records(conn, uid)
 
             query = "SELECT * FROM clipboard_entries WHERE expires_at > ? AND user_id = ?"
@@ -159,6 +184,8 @@ class ClipboardService:
     @classmethod
     def _sync_pending_records(cls, conn, uid: str):
         """Upload un-synced local records to Firestore, excluding any tombstoned records."""
+        if cls._is_firestore_disabled():
+            return
         try:
             from .firestore_service import FirestoreService
             # Purge any lingering records that were tombstoned
@@ -224,40 +251,81 @@ class ClipboardService:
     ) -> dict:
         """
         Add a new clipboard entry for the user.
-        Enforces user ownership, 7-day retention, and schema versioning.
+        Enforces user ownership, 7-day retention, secret filtering, and schema versioning.
         """
         if not uid:
             raise PermissionError("User ID is required to add entries.")
-        if not content or not isinstance(content, str):
+        if not content or not isinstance(content, str) or not content.strip():
             raise ValueError("Content cannot be empty.")
 
-        entry_id = str(uuid.uuid4())
-        entry = ClipboardEntry(
-            entry_id=entry_id,
-            user_id=uid,
-            content=content,
-            created_at=created_at,
-            expires_at=expires_at,
-        )
+        # Pre-persistence secret filtering: reject sensitive API keys, tokens, and passwords
+        try:
+            from desktop_watcher import SecretDetector
+            is_secret, rule_name = SecretDetector.check(content)
+            if is_secret:
+                raise ValueError(f"Sensitive content detected ({rule_name}). Entry rejected for security.")
+        except ImportError:
+            pass
 
+        now_ms = created_at or int(time.time() * 1000)
+
+        # Duplicate prevention (within 3-second window)
         if not cls._use_sqlite():
             user_entries = cls.get_user_store(uid)
+            if user_entries:
+                latest = max(user_entries.values(), key=lambda x: x.created_at, default=None)
+                if latest and latest.content == content and abs(now_ms - latest.created_at) < 3000:
+                    return latest.to_dict()
+
+            entry_id = str(uuid.uuid4())
+            entry = ClipboardEntry(
+                entry_id=entry_id,
+                user_id=uid,
+                content=content,
+                created_at=created_at,
+                expires_at=expires_at,
+            )
             user_entries[entry_id] = entry
+            # Sync to Cloud Firestore if available and not disabled
+            if not cls._is_firestore_disabled():
+                try:
+                    from .firestore_service import FirestoreService
+                    if FirestoreService.is_available():
+                        FirestoreService.sync_entry(entry.to_dict())
+                except Exception:
+                    pass
             return entry.to_dict()
+
+        # Live SQLite mode: check recent duplicate
+        db_file = cls._get_db_path()
+        if db_file.exists():
+            import sqlite3
+            try:
+                with sqlite3.connect(str(db_file), timeout=5) as conn:
+                    conn.row_factory = sqlite3.Row
+                    recent = conn.execute(
+                        "SELECT * FROM clipboard_entries WHERE user_id = ? AND content = ? ORDER BY created_at DESC LIMIT 1",
+                        (uid, content),
+                    ).fetchone()
+                    if recent and abs(now_ms - recent["created_at"]) < 3000:
+                        return dict(recent)
+            except Exception:
+                pass
 
         from desktop_watcher import ClipboardDatabase
         db = ClipboardDatabase(cls._get_db_path())
         record = db.insert_entry(content=content, user_id=uid, created_at=created_at)
 
-        # Sync to Cloud Firestore if available
-        try:
-            from .firestore_service import FirestoreService
-            if FirestoreService.is_available():
-                if FirestoreService.sync_entry(record):
-                    record["sync_status"] = "synced"
-                    db.update_sync_status(record["id"], "synced")
-        except Exception:
-            pass
+        # Sync to Cloud Firestore if available and not disabled
+        if not cls._is_firestore_disabled():
+            try:
+                from .firestore_service import FirestoreService
+                if FirestoreService.is_available():
+                    if FirestoreService.sync_entry(record):
+                        record["sync_status"] = "synced"
+                        db.update_sync_status(record["id"], "synced")
+            except Exception:
+                pass
 
         return record
 
@@ -297,8 +365,8 @@ class ClipboardService:
                 )
             conn.commit()
 
-        # Propagate deletion to Cloud Firestore
-        if deleted:
+        # Propagate deletion to Cloud Firestore if not disabled
+        if deleted and not cls._is_firestore_disabled():
             try:
                 from .firestore_service import FirestoreService
                 if FirestoreService.is_available():
@@ -333,12 +401,13 @@ class ClipboardService:
                     del user_entries[eid]
                     authorized.append(eid)
 
-            try:
-                from .firestore_service import FirestoreService
-                if FirestoreService.is_available() and authorized:
-                    return FirestoreService.bulk_delete_entries(uid, authorized)
-            except Exception:
-                pass
+            if not cls._is_firestore_disabled():
+                try:
+                    from .firestore_service import FirestoreService
+                    if FirestoreService.is_available() and authorized:
+                        return FirestoreService.bulk_delete_entries(uid, authorized)
+                except Exception:
+                    pass
             return authorized, []
 
         db_file = cls._get_db_path()
@@ -376,16 +445,17 @@ class ClipboardService:
                     conn.commit()
                     authorized_deleted.extend(chunk_authorized)
 
-        # 4. Propagate deletion to Cloud Firestore
+        # 4. Propagate deletion to Cloud Firestore if not disabled
         cloud_deleted = list(authorized_deleted)
         cloud_failed: List[str] = []
-        try:
-            from .firestore_service import FirestoreService
-            if FirestoreService.is_available() and authorized_deleted:
-                c_del, c_fail = FirestoreService.bulk_delete_entries(uid, authorized_deleted)
-                cloud_deleted = c_del
-                cloud_failed = c_fail
-        except Exception:
-            pass
+        if not cls._is_firestore_disabled():
+            try:
+                from .firestore_service import FirestoreService
+                if FirestoreService.is_available() and authorized_deleted:
+                    c_del, c_fail = FirestoreService.bulk_delete_entries(uid, authorized_deleted)
+                    cloud_deleted = c_del
+                    cloud_failed = c_fail
+            except Exception:
+                pass
 
         return cloud_deleted, cloud_failed

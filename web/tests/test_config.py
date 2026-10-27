@@ -115,3 +115,58 @@ def test_test_config_validation_passes():
     assert TestConfig.TESTING is True
     assert TestConfig.SECRET_KEY == "test-secret-key-testing-only"
     assert TestConfig.DEV_MOCK_AUTH is True
+
+
+def test_load_test_config_validation_passes():
+    """Verify LoadTestConfig passes validation with safe isolated settings."""
+    from web.config import LoadTestConfig
+    LoadTestConfig.validate()
+    assert LoadTestConfig.LOAD_TEST_MODE is True
+    assert LoadTestConfig.DISABLE_FIRESTORE is True
+    assert LoadTestConfig.FIREBASE_SERVICE_ACCOUNT_KEY == ""
+    assert "clipboard_load_test.db" in str(LoadTestConfig.SQLITE_DB_PATH).lower()
+
+
+def test_load_test_config_fail_closed_rejects_production():
+    """Fail-closed guard: LOAD_TEST_MODE must refuse to start in production."""
+    class BadProdLoadTestConfig(Config):
+        FLASK_ENV = "production"
+        LOAD_TEST_MODE = True
+        SECRET_KEY = "secure-random-32-byte-hex-secret-key"
+        FIREBASE_API_KEY = "test-key"
+        DISABLE_FIRESTORE = True
+        FIREBASE_SERVICE_ACCOUNT_KEY = ""
+        USE_SQLITE = True
+        SQLITE_DB_PATH = Path("clipboard_load_test.db")
+
+    with pytest.raises(ValueError, match="LOAD_TEST_MODE cannot be enabled in production"):
+        BadProdLoadTestConfig.validate()
+
+
+def test_load_test_config_fail_closed_rejects_firestore_credentials():
+    """Fail-closed guard: LOAD_TEST_MODE must refuse to start if service account key is configured."""
+    class LeakyFirestoreLoadTestConfig(Config):
+        FLASK_ENV = "development"
+        LOAD_TEST_MODE = True
+        FIREBASE_SERVICE_ACCOUNT_KEY = "/path/to/serviceAccount.json"
+        DISABLE_FIRESTORE = True
+        USE_SQLITE = True
+        SQLITE_DB_PATH = Path("clipboard_load_test.db")
+
+    with pytest.raises(ValueError, match="FIREBASE_SERVICE_ACCOUNT_KEY is populated"):
+        LeakyFirestoreLoadTestConfig.validate()
+
+
+def test_load_test_config_fail_closed_rejects_production_database():
+    """Fail-closed guard: LOAD_TEST_MODE must refuse to start if pointed to production clipboard_local.db."""
+    class ProdDbLoadTestConfig(Config):
+        FLASK_ENV = "development"
+        LOAD_TEST_MODE = True
+        FIREBASE_SERVICE_ACCOUNT_KEY = ""
+        DISABLE_FIRESTORE = True
+        USE_SQLITE = True
+        SQLITE_DB_PATH = Path("clipboard_local.db")
+
+    with pytest.raises(ValueError, match="cannot use the production clipboard_local.db database"):
+        ProdDbLoadTestConfig.validate()
+

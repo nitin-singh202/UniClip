@@ -216,6 +216,9 @@ const ClipboardApp = {
   focusedTrigger: null,
   entriesMap: new Map(),
   _toastTimer: null,
+  _isProgrammaticCopy: false,
+  _lastCapturedText: "",
+  _lastCapturedTime: 0,
 
   init() {
     // Detect Guest mode session state
@@ -253,6 +256,7 @@ const ClipboardApp = {
     this.bindModals();
     this.bindAddEntryModal();
     this.bindBulkDeleteModal();
+    this.bindCopyCapture();
 
     // Start background live synchronization for real-time clipboard updates
     this.startLiveSync();
@@ -618,6 +622,7 @@ const ClipboardApp = {
       btnElement.dataset.copying = "true";
     }
 
+    this._isProgrammaticCopy = true;
     let copiedSuccessfully = false;
 
     try {
@@ -636,6 +641,10 @@ const ClipboardApp = {
       } catch (fallbackErr) {
         copiedSuccessfully = false;
       }
+    } finally {
+      setTimeout(() => {
+        this._isProgrammaticCopy = false;
+      }, 400);
     }
 
     if (copiedSuccessfully) {
@@ -949,6 +958,144 @@ const ClipboardApp = {
         }
       });
     }
+  },
+
+  /* ---------------- Automatic In-Page Copy Capture ---------------- */
+  checkSecret(text) {
+    if (!text || typeof text !== "string") return null;
+
+    const rules = [
+      { name: "Private Key", regex: /-----BEGIN\s+([A-Z0-9_-]+\s+)?PRIVATE\s+KEY-----/ },
+      { name: "AWS Access Key", regex: /\b(AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}\b/ },
+      { name: "GitHub Token", regex: /\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,255}\b|\bgithub_pat_[A-Za-z0-9_]{82}\b/ },
+      { name: "Google/Firebase API Key", regex: /\bAIza[0-9A-Za-z\-_]{35}\b/ },
+      { name: "OpenAI API Key", regex: /\bsk-[a-zA-Z0-9]{20,}\b|\bsk-proj-[a-zA-Z0-9_\-]{20,}\b/ },
+      { name: "Anthropic API Key", regex: /\bsk-ant-[a-zA-Z0-9_\-]{20,}\b/ },
+      { name: "Slack Token", regex: /\bxox[baprs]-[0-9a-zA-Z\-]{10,}\b/ },
+      { name: "JWT Token", regex: /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/ },
+      { name: "Database URL", regex: /\b[a-zA-Z0-9+.-]+:\/\/[^:\s]+:[^@\s]+@[^/\s]+/ },
+      { name: "Labeled Password", regex: /\b(password|passwd|pwd|secret_key)\s*[:=]\s*['"]?[^\s'"]{6,}['"]?/i },
+    ];
+
+    for (const r of rules) {
+      if (r.regex.test(text)) {
+        return r.name;
+      }
+    }
+    return null;
+  },
+
+  extractSelectedText(e) {
+    let text = "";
+
+    // 1. Check if user selected text in an input or textarea
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA")) {
+      const start = activeEl.selectionStart;
+      const end = activeEl.selectionEnd;
+      if (typeof start === "number" && typeof end === "number" && end > start) {
+        text = activeEl.value.substring(start, end);
+      }
+    }
+
+    // 2. Standard DOM window selection
+    if (!text) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        text = sel.toString();
+      }
+    }
+
+    // 3. Fallback to event clipboardData if provided
+    if (!text && e && e.clipboardData) {
+      try {
+        text = e.clipboardData.getData("text/plain");
+      } catch (_) {}
+    }
+
+    return text ? text.trim() : "";
+  },
+
+  async handleCopyCapture(text) {
+    if (!text) return;
+
+    // Check size limit (64 KB matching schema limit)
+    if (new Blob([text]).size > 65536) {
+      this.showToast("Copied text exceeds 64 KB limit. Not saved.", "warning");
+      return;
+    }
+
+    // Duplicate prevention:
+    // 1) Same content captured within the last 4 seconds
+    const now = Date.now();
+    if (text === this._lastCapturedText && (now - this._lastCapturedTime) < 4000) {
+      return;
+    }
+
+    // 2) Content matches the most recent entry already in history
+    if (this.renderedIds && this.renderedIds.length > 0) {
+      const topId = this.renderedIds[0];
+      if (this.entriesMap.get(topId) === text) {
+        return;
+      }
+    }
+
+    // Secret filtering: Reject and notify without logging sensitive content
+    const secretRule = this.checkSecret(text);
+    if (secretRule) {
+      this.showToast(`Sensitive content detected (${secretRule}). Rejected for security.`, "warning");
+      return;
+    }
+
+    this._lastCapturedText = text;
+    this._lastCapturedTime = now;
+
+    try {
+      if (this.isGuest) {
+        await GuestStorage.add(text);
+        this.showToast("Copied text saved to guest history!", "success");
+        await this.fetchAndUpdate(true);
+      } else {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+        const resp = await fetch("/api/clipboard", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken || "",
+          },
+          body: JSON.stringify({ content: text }),
+        });
+
+        const data = await resp.json().catch(() => null);
+        if (resp.ok && data?.success) {
+          this.showToast("Copied text saved to clipboard history!", "success");
+          await this.fetchAndUpdate(true);
+        } else {
+          const errMsg = data?.error || "Failed to save copied text.";
+          this.showToast(errMsg, "danger");
+        }
+      }
+    } catch (err) {
+      this.showToast("Network error saving copied text.", "danger");
+    }
+  },
+
+  bindCopyCapture() {
+    document.addEventListener("copy", (e) => {
+      // Ignore programmatic copies initiated by UniClip's own UI buttons
+      if (this._isProgrammaticCopy) {
+        return;
+      }
+
+      // Safely extract selected text without calling preventDefault so system copy proceeds
+      const selectedText = this.extractSelectedText(e);
+      if (!selectedText) {
+        return;
+      }
+
+      // Process and save asynchronously without blocking normal copy behavior
+      this.handleCopyCapture(selectedText);
+    });
   },
 
   /* ---------------- Bulk Selection & Deletion ---------------- */
