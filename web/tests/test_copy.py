@@ -1,5 +1,5 @@
 """
-Universal Clipboard AI — Copy Feature Test Suite
+UniClip — Copy Feature Test Suite
 =================================================
 Verifies:
 - Accurate extraction and data attributes for short text, multiline text, URLs, and Unicode/emojis.
@@ -52,7 +52,7 @@ def test_copy_multiline_text_fidelity(auth_client):
 
 def test_copy_unicode_emojis_and_non_english(auth_client):
     """Test Unicode emojis and multi-language scripts (Arabic, Hindi, Chinese) are preserved exactly."""
-    unicode_text = "🎉 🚀 Universal Clipboard • नमस्ते दुनिया • مرحبا بالعالم • 你好世界"
+    unicode_text = "🎉 🚀 UniClip • नमस्ते दुनिया • مرحبا بالعالم • 你好世界"
     ClipboardService.add_entry(uid="user_alice", content=unicode_text)
 
     resp = auth_client.get("/dashboard")
@@ -74,7 +74,7 @@ def test_copy_unicode_emojis_and_non_english(auth_client):
 
 def test_copy_url_fidelity(auth_client):
     """Test URL with complex query parameters and fragment remains exact without navigation side effects."""
-    test_url = "https://universal-clipboard.example.com/search?q=test+query&category=code#top"
+    test_url = "https://uniclip.example.com/search?q=test+query&category=code#top"
     ClipboardService.add_entry(uid="user_alice", content=test_url)
 
     resp = auth_client.get("/dashboard")

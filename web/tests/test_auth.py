@@ -14,7 +14,7 @@ def test_2_login_page_renders(client):
     resp = client.get("/login")
     assert resp.status_code == 200
     html = resp.get_data(as_text=True)
-    assert "Universal Clipboard AI" in html
+    assert "UniClip" in html
     assert "Sign in with Google" in html
     assert "Privacy Notice" in html
 

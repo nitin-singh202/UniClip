@@ -18,7 +18,7 @@ def test_guest_session_can_access_dashboard_and_settings(client):
 
     resp_dash = client.get("/dashboard")
     assert resp_dash.status_code == 200
-    assert "Universal Clipboard AI" in resp_dash.get_data(as_text=True)
+    assert "UniClip" in resp_dash.get_data(as_text=True)
 
     resp_settings = client.get("/settings")
     assert resp_settings.status_code == 200

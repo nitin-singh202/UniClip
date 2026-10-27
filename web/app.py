@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import datetime, timezone
 from flask import (
@@ -10,15 +11,21 @@ from flask import (
     session,
     abort,
     send_from_directory,
+    current_app,
 )
 import os
 import sys
 import threading
 from pathlib import Path
 
-# Support running directly via `python app.py` or as package `python -m web.app`
+# Ensure both web/ directory and workspace root are in sys.path
+_BASE_DIR = Path(__file__).resolve().parent
+_ROOT_DIR = _BASE_DIR.parent
+for p in (str(_BASE_DIR), str(_ROOT_DIR)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
 if __package__ is None or __package__ == "":
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
     from config import Config
     from services import (
         AuthService,
@@ -64,7 +71,7 @@ def format_time_remaining(expires_ms: int) -> str:
 
 
 def create_app(config_class=Config) -> Flask:
-    """Application factory for Universal Clipboard AI Web Dashboard."""
+    """Application factory for UniClip Web Dashboard."""
     if hasattr(config_class, "validate"):
         config_class.validate()
     app = Flask(__name__)
@@ -200,27 +207,23 @@ def create_app(config_class=Config) -> Flask:
     def dashboard():
         """Main clipboard history dashboard for authenticated users or guest mode."""
         user = AuthService.get_current_user()
-        if user.get("is_guest"):
-            return render_template(
-                "dashboard.html",
-                entries=[],
-                total_count=0,
-                search_query="",
-                sync_status="guest_ready",
-                is_guest=True,
-            )
-
-        uid = user["uid"]
+        is_guest = user.get("is_guest", False)
+        uid = "guest" if is_guest else user["uid"]
         search_query = request.args.get("q", "").strip()
-        entries, sync_status = ClipboardService.list_entries(uid, search_query=search_query)
+
+        if is_guest and not current_app.config.get("USE_SQLITE", False):
+            entries = []
+            sync_status = "guest_ready"
+        else:
+            entries, sync_status = ClipboardService.list_entries(uid, search_query=search_query)
 
         return render_template(
             "dashboard.html",
             entries=entries,
             total_count=len(entries),
             search_query=search_query,
-            sync_status=sync_status,
-            is_guest=False,
+            sync_status="guest_ready" if is_guest else sync_status,
+            is_guest=is_guest,
         )
 
     @app.route("/settings")
@@ -236,7 +239,9 @@ def create_app(config_class=Config) -> Flask:
     def get_clipboard_entries_api():
         """Lightweight endpoint for polling sync and auto-refresh."""
         user = AuthService.get_current_user()
-        if user.get("is_guest"):
+        is_guest = user.get("is_guest", False)
+
+        if is_guest and not current_app.config.get("USE_SQLITE", False):
             return jsonify({
                 "success": True,
                 "entries": [],
@@ -245,7 +250,7 @@ def create_app(config_class=Config) -> Flask:
                 "is_guest": True,
             })
 
-        uid = user["uid"]
+        uid = "guest" if is_guest else user["uid"]
         search_query = request.args.get("q", "").strip()
 
         entries, sync_status = ClipboardService.list_entries(uid, search_query=search_query)
@@ -266,7 +271,8 @@ def create_app(config_class=Config) -> Flask:
             "success": True,
             "entries": formatted_entries,
             "total_count": len(formatted_entries),
-            "sync_status": sync_status,
+            "sync_status": "guest_ready" if is_guest else sync_status,
+            "is_guest": is_guest,
             "server_time": int(time.time() * 1000),
         })
 
@@ -379,14 +385,20 @@ def _start_embedded_watcher():
     """Start desktop clipboard watcher in a daemon thread guarded by SingleInstanceLock."""
     def _worker():
         try:
+            workspace_root = Path(__file__).resolve().parent.parent
+            if str(workspace_root) not in sys.path:
+                sys.path.insert(0, str(workspace_root))
             import desktop_watcher
             lock = desktop_watcher.SingleInstanceLock()
             if not lock.acquire():
+                logger = logging.getLogger("web.app")
+                logger.info("Desktop watcher instance already active in another process.")
                 return
             watcher = desktop_watcher.ClipboardWatcher()
             watcher.start()
-        except Exception:
-            pass
+        except Exception as e:
+            logger = logging.getLogger("web.app")
+            logger.warning("Desktop watcher background thread encountered error: %s", e)
 
     thread = threading.Thread(target=_worker, name="DesktopWatcherDaemon", daemon=True)
     thread.start()

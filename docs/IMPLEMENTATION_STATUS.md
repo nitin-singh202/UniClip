@@ -1,4 +1,4 @@
-# Universal Clipboard AI — Implementation Status & Architecture
+# UniClip — Implementation Status & Architecture
 
 **Last Updated:** October 2026  
 **Current Phase:** Web Dashboard Implemented & Test Suite Verified  

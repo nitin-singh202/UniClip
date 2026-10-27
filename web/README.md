@@ -1,6 +1,6 @@
-# Universal Clipboard AI — Web Dashboard
+# UniClip — Web Dashboard
 
-The web dashboard is the companion browser interface for **Universal Clipboard AI**, allowing users to view, search, inspect, copy, and delete their synchronized clipboard entries.
+The web dashboard is the companion browser interface for **UniClip**, allowing users to view, search, inspect, copy, and delete their synchronized clipboard entries.
 
 ---
 

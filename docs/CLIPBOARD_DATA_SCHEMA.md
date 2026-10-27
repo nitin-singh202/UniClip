@@ -1,4 +1,4 @@
-# Universal Clipboard AI — Canonical Data Schema Contract
+# UniClip — Canonical Data Schema Contract
 
 **Version:** 1.0.0  
 **Status:** Active  

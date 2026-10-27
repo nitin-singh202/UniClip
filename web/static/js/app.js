@@ -1,5 +1,5 @@
 /**
- * Universal Clipboard AI — Mobile-First Dashboard & Guest Mode Manager
+ * UniClip — Mobile-First Dashboard & Guest Mode Manager
  * =====================================================================
  * Handles:
  * - Guest Mode storage using client-side IndexedDB (with graceful fallback).
@@ -254,24 +254,18 @@ const ClipboardApp = {
     this.bindAddEntryModal();
     this.bindBulkDeleteModal();
 
-    if (this.isGuest) {
-      // In guest mode, load local IndexedDB data immediately and don't poll remote server
-      this.updateSyncBadge("local_ready", "Guest (Local)");
-      this.fetchAndUpdate(true);
-    } else {
-      // Authenticated mode: start background live synchronization
-      this.startLiveSync();
+    // Start background live synchronization for real-time clipboard updates
+    this.startLiveSync();
 
-      // Pause / resume polling when browser tab visibility changes
-      document.addEventListener("visibilitychange", () => {
-        if (document.hidden) {
-          this.stopLiveSync();
-        } else {
-          this.fetchAndUpdate(true);
-          this.startLiveSync();
-        }
-      });
-    }
+    // Pause / resume polling when browser tab visibility changes
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        this.stopLiveSync();
+      } else {
+        this.fetchAndUpdate(true);
+        this.startLiveSync();
+      }
+    });
 
     window.addEventListener("beforeunload", () => {
       this.stopLiveSync();
@@ -280,7 +274,7 @@ const ClipboardApp = {
 
   /* ---------------- Live Sync & Polling ---------------- */
   startLiveSync() {
-    if (!document.getElementById("clipboard-table") || this.isGuest) return;
+    if (!document.getElementById("clipboard-table")) return;
 
     if (this.pollTimer) {
       clearInterval(this.pollTimer);
@@ -307,21 +301,17 @@ const ClipboardApp = {
     this.isFetching = true;
 
     try {
-      if (this.isGuest) {
-        // Query client-side storage directly
-        const guestEntries = await GuestStorage.getAll(this.currentQuery);
-        this.reconcile(guestEntries, guestEntries.length, "local_ready", force);
-        return;
-      }
-
-      // Authenticated mode: query Firestore-backed server endpoint
+      // Query backend clipboard entries endpoint (backed by SQLite/Firestore)
       const q = encodeURIComponent(this.currentQuery.trim());
       const resp = await fetch(`/api/clipboard/entries?q=${q}`, {
         headers: { Accept: "application/json" },
       });
 
       if (!resp.ok) {
-        if (resp.status === 401) {
+        if (this.isGuest) {
+          const guestEntries = await GuestStorage.getAll(this.currentQuery);
+          this.reconcile(guestEntries, guestEntries.length, "local_ready", force);
+        } else if (resp.status === 401) {
           this.stopLiveSync();
           this.updateSyncBadge("offline", "Session Expired");
         } else {
@@ -332,10 +322,23 @@ const ClipboardApp = {
 
       const data = await resp.json();
       if (data && data.success) {
-        this.reconcile(data.entries, data.total_count, data.sync_status, force);
+        let entries = data.entries || [];
+        if (this.isGuest && entries.length === 0) {
+          // In guest mode without backend entries, fallback to local IndexedDB
+          const clientGuestEntries = await GuestStorage.getAll(this.currentQuery);
+          if (clientGuestEntries.length > 0) {
+            entries = clientGuestEntries;
+          }
+        }
+        this.reconcile(entries, data.total_count ?? entries.length, data.sync_status || "local_ready", force);
       }
     } catch (err) {
-      this.updateSyncBadge("offline", "Unreachable");
+      if (this.isGuest) {
+        const guestEntries = await GuestStorage.getAll(this.currentQuery);
+        this.reconcile(guestEntries, guestEntries.length, "local_ready", force);
+      } else {
+        this.updateSyncBadge("offline", "Unreachable");
+      }
     } finally {
       this.isFetching = false;
     }
@@ -1285,7 +1288,7 @@ const ClipboardApp = {
         deferredPrompt.prompt();
         const choice = await deferredPrompt.userChoice;
         if (choice.outcome === "accepted") {
-          this.showToast("Installing Universal Clipboard AI...", "success");
+          this.showToast("Installing UniClip...", "success");
         }
         deferredPrompt = null;
         if (installItem) installItem.style.display = "none";
@@ -1295,7 +1298,7 @@ const ClipboardApp = {
     window.addEventListener("appinstalled", () => {
       deferredPrompt = null;
       if (installItem) installItem.style.display = "none";
-      this.showToast("Universal Clipboard AI installed!", "success");
+      this.showToast("UniClip installed!", "success");
     });
   },
 

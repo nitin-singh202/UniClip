@@ -1,5 +1,5 @@
 /**
- * Universal Clipboard AI — Progressive Web App Service Worker
+ * UniClip — Progressive Web App Service Worker
  * ============================================================
  * Privacy & Security Architecture:
  * - NEVER caches clipboard text, tokens, session data, or API responses.

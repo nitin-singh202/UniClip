@@ -1,5 +1,5 @@
 """
-Generate clean, original PWA icons for Universal Clipboard AI.
+Generate clean, original PWA icons for UniClip.
 Outputs:
 - web/static/icons/icon-192.png
 - web/static/icons/icon-512.png

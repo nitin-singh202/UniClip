@@ -1,4 +1,4 @@
-# Universal Clipboard AI — Security Architecture & Firestore Rules
+# UniClip — Security Architecture & Firestore Rules
 
 ---
 

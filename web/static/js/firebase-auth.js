@@ -1,5 +1,5 @@
 /**
- * Universal Clipboard AI — Firebase Authentication Client
+ * UniClip — Firebase Authentication Client
  * Handles Google Sign-In via Firebase Web SDK (supporting both redirect and popup)
  * and exchanges the verified ID token with Flask backend session endpoint.
  */

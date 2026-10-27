@@ -1,5 +1,5 @@
 """
-Universal Clipboard AI — Windows Desktop Clipboard Watcher
+UniClip — Windows Desktop Clipboard Watcher
 ============================================================
 A secure, resilient Windows desktop clipboard capture component that:
 - Monitors the Windows system clipboard in the background.
@@ -511,7 +511,7 @@ class ClipboardWatcher:
     def start(self):
         """Start the continuous watcher loop."""
         self._running = True
-        logger.info("Universal Clipboard AI Desktop Watcher started.")
+        logger.info("UniClip Desktop Watcher started.")
         logger.info("Local database: %s", self.db.db_path)
         logger.info("Polling every %.2fs. Press Ctrl+C to stop.", self.poll_interval)
 
@@ -551,7 +551,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Universal Clipboard AI — Windows Desktop Watcher"
+        description="UniClip — Windows Desktop Watcher"
     )
     parser.add_argument("--db", type=str, default=str(DEFAULT_DB_PATH), help="Path to SQLite database")
     parser.add_argument("--interval", type=float, default=DEFAULT_POLL_INTERVAL, help="Polling interval in seconds")

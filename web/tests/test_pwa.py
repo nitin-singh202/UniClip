@@ -1,5 +1,5 @@
 """
-Tests for Progressive Web App (PWA) components in Universal Clipboard AI.
+Tests for Progressive Web App (PWA) components in UniClip.
 Verifies manifest metadata, service worker headers, privacy boundaries,
 and responsive template tags.
 """
@@ -23,8 +23,8 @@ def test_manifest_webmanifest_endpoint(client):
     assert "application/manifest+json" in response.headers.get("Content-Type", "")
 
     data = json.loads(response.data)
-    assert data.get("name") == "Universal Clipboard AI"
-    assert data.get("short_name") == "Universal Clip"
+    assert data.get("name") == "UniClip"
+    assert data.get("short_name") == "UniClip"
     assert data.get("start_url") == "/dashboard"
     assert data.get("scope") == "/"
     assert data.get("display") == "standalone"

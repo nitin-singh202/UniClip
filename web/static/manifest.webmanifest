@@ -1,6 +1,6 @@
 {
-  "name": "Universal Clipboard AI",
-  "short_name": "Universal Clip",
+  "name": "UniClip",
+  "short_name": "UniClip",
   "description": "Real-time cross-device clipboard synchronization with 7-day retention and local secret protection.",
   "start_url": "/dashboard",
   "scope": "/",

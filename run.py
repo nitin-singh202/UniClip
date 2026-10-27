@@ -1,5 +1,5 @@
 """
-Universal Clipboard AI - Unified Application Launcher
+UniClip - Unified Application Launcher
 
 Usage:
     python run.py             # Start the Flask web dashboard (default)
@@ -19,7 +19,7 @@ ROOT_DIR = Path(__file__).resolve().parent
 def run_web():
     """Run Flask dashboard web application."""
     print("=" * 60)
-    print("Starting Universal Clipboard AI Web Dashboard...")
+    print("Starting UniClip Web Dashboard...")
     print("URL: http://127.0.0.1:5000")
     print("=" * 60)
     from web.app import create_app
@@ -29,7 +29,7 @@ def run_web():
 def run_watcher():
     """Run Windows desktop clipboard watcher."""
     print("=" * 60)
-    print("Starting Universal Clipboard AI Desktop Watcher...")
+    print("Starting UniClip Desktop Watcher...")
     print("Press Ctrl+C to stop.")
     print("=" * 60)
     import desktop_watcher
@@ -38,7 +38,7 @@ def run_watcher():
 def run_all():
     """Run both web server and desktop watcher simultaneously."""
     print("=" * 60)
-    print("Starting Universal Clipboard AI (Web + Watcher)...")
+    print("Starting UniClip (Web + Watcher)...")
     print("Web: http://127.0.0.1:5000")
     print("Watcher: Active (Monitoring Windows clipboard)")
     print("Press Ctrl+C to terminate both services.")
@@ -68,7 +68,7 @@ def run_all():
         for p in processes:
             if p.poll() is None:
                 p.terminate()
-        print("Universal Clipboard AI services stopped.")
+        print("UniClip services stopped.")
 
 def main():
     arg = sys.argv[1].lower() if len(sys.argv) > 1 else "web"

@@ -1,4 +1,4 @@
-# Universal Clipboard AI — Android Companion Application Guide
+# UniClip — Android Companion Application Guide
 
 **Package Name:** `com.universalclipboard.ai`  
 **Root Directory:** `mobile/`  
@@ -10,7 +10,7 @@
 
 ## 1. Overview & Architecture
 
-The Universal Clipboard AI Android companion app provides real-time bidirectional synchronization with your Windows clipboard and Flask web dashboard.
+The UniClip Android companion app provides real-time bidirectional synchronization with your Windows clipboard and Flask web dashboard.
 
 ```text
 mobile/

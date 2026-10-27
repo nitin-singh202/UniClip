@@ -1,7 +1,7 @@
-# Universal Clipboard AI — Progressive Web App (PWA) Guide
+# UniClip — Progressive Web App (PWA) Guide
 
-**App Name:** Universal Clipboard AI  
-**Short Name:** Universal Clip  
+**App Name:** UniClip  
+**Short Name:** UniClip  
 **Display Mode:** `standalone` (fullscreen app-like window without browser address bar)  
 **Theme & Background:** `#0b0f17` (Dark Slate)  
 **Scope & Start URL:** Scope `/`, Start URL `/dashboard`  
@@ -24,8 +24,8 @@ The application will boot at `http://127.0.0.1:5000`.
 1. Open Chrome or Edge and navigate to `http://127.0.0.1:5000`.
 2. Open DevTools (F12) -> **Application** tab.
 3. Under **Application -> Manifest**, verify:
-   - Name: `Universal Clipboard AI`
-   - Short name: `Universal Clip`
+   - Name: `UniClip`
+   - Short name: `UniClip`
    - Start URL: `/dashboard`
    - Theme color: `#0b0f17`
    - Icons: All 4 icons render cleanly without 404s.
@@ -61,7 +61,7 @@ Because your phone is connected via USB:
 
 ### Option 2: Free HTTPS Hosting (Zero-Cost Production Setup)
 
-Since Universal Clipboard AI is built with Python Flask + Cloud Firestore, it requires a Python execution environment (it cannot be hosted on static-only hosting like raw Firebase Hosting without a Cloud Function or Cloud Run container).
+Since UniClip is built with Python Flask + Cloud Firestore, it requires a Python execution environment (it cannot be hosted on static-only hosting like raw Firebase Hosting without a Cloud Function or Cloud Run container).
 
 #### Recommended Zero-Cost Hosting Platforms:
 1. **Render.com (Free Web Service Tier)**:
