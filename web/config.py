@@ -2,9 +2,12 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env from web directory or parent
+# Load .env from web directory or parent workspace root
 BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(BASE_DIR / ".env")
+if (BASE_DIR / ".env").exists():
+    load_dotenv(BASE_DIR / ".env")
+if (BASE_DIR.parent / ".env").exists():
+    load_dotenv(BASE_DIR.parent / ".env")
 
 
 def find_service_account_key() -> str:
@@ -39,7 +42,7 @@ class Config:
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 7  # 7 days
 
     # Firebase Public Web Configuration (matches universal-clipboard-ai)
-    FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "AIzaSyCsoJiLxt8n8g8c-zrPM_ji0L6XuStbMwo")
+    FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "")
     FIREBASE_AUTH_DOMAIN = os.environ.get("FIREBASE_AUTH_DOMAIN", "universal-clipboard-ai.firebaseapp.com")
     FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "universal-clipboard-ai")
     FIREBASE_STORAGE_BUCKET = os.environ.get("FIREBASE_STORAGE_BUCKET", "universal-clipboard-ai.firebasestorage.app")
@@ -69,6 +72,17 @@ class Config:
             "messagingSenderId": cls.FIREBASE_MESSAGING_SENDER_ID,
             "appId": cls.FIREBASE_APP_ID,
         }
+
+    @classmethod
+    def validate(cls) -> None:
+        """Validate critical configuration settings and security constraints."""
+        if (cls.FLASK_ENV or "").lower() == "production":
+            if not cls.SECRET_KEY or cls.SECRET_KEY == "dev-insecure-key-change-in-production":
+                raise ValueError("Insecure or missing SECRET_KEY: A secure SECRET_KEY must be set in production.")
+            if cls.DEV_MOCK_AUTH:
+                raise ValueError("DEV_MOCK_AUTH cannot be enabled in production.")
+            if not cls.FIREBASE_API_KEY:
+                raise ValueError("FIREBASE_API_KEY must be configured for production.")
 
 
 class TestConfig(Config):

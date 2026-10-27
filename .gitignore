@@ -1,4 +1,4 @@
-# Python
+# Python environments and caches
 __pycache__/
 *.py[cod]
 *$py.class
@@ -8,56 +8,49 @@ env/
 venv/
 .venv/
 ENV/
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Environment, Secrets, and Firebase Service Account Keys
+# Environment and local secret files (keep .env.example trackable)
 .env
-.env.local
+.env.*
+!.env.example
 *.json.secret
-*adminsdk*.json
-serviceAccountKey.json
 *.pem
+*.key
 
-# Database & local storage
+# Firebase Admin service account private credentials - NEVER COMMIT
+*adminsdk*.json
+*firebase-adminsdk*.json
+*service-account*.json
+*service_account*.json
+serviceAccountKey.json
+
+# Local SQLite databases and write-ahead logs
 *.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
 *.db
 *.db-shm
 *.db-wal
 .desktop_watcher.lock
 
-# Testing & Coverage
-.pytest_cache/
-.coverage
-htmlcov/
-
 # Logs
 *.log
 
-# Large SDK Archives
+# Large SDK Archives and temporary files
 flutter_windows_*.zip
+*.zip
+*.tar.gz
+/tatus*
 
-# Firebase Admin private keys - NEVER COMMIT
-*firebase-adminsdk*.json
-*service-account*.json
-*service_account*.json
-*adminsdk*.json
-
-# Local clipboard data
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
-
-# Virtual environments and generated files
-.venv/
-.pytest_cache/
-__pycache__/
+# Flutter generated files and tool caches
+.dart_tool/
 mobile/.dart_tool/
 mobile/build/
 mobile/.flutter-plugins-dependencies
-
-# Accidental temporary file
-/tatus
 
 # Deprecated standalone Flutter app
 /android/

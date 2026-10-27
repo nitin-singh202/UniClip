@@ -65,6 +65,8 @@ def format_time_remaining(expires_ms: int) -> str:
 
 def create_app(config_class=Config) -> Flask:
     """Application factory for Universal Clipboard AI Web Dashboard."""
+    if hasattr(config_class, "validate"):
+        config_class.validate()
     app = Flask(__name__)
     app.config.from_object(config_class)
 

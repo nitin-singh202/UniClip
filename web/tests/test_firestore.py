@@ -1,6 +1,11 @@
 import pytest
 from web.services.firestore_service import FirestoreService
 
+pytestmark = pytest.mark.skipif(
+    not FirestoreService.is_available(),
+    reason="Live Firestore service account credentials not configured in this environment"
+)
+
 def test_firestore_service_availability():
     """Verify FirestoreService client initializes with configured key."""
     assert FirestoreService.is_available() is True

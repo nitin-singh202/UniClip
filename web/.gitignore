@@ -1,4 +1,4 @@
-# Python
+# Python environments and caches
 __pycache__/
 *.py[cod]
 *$py.class
@@ -8,21 +8,31 @@ env/
 venv/
 .venv/
 ENV/
-
-# Environment and secrets
-.env
-.env.local
-serviceAccountKey.json
-*.pem
-
-# Database & local storage
-*.sqlite
-*.db
-
-# Testing & Coverage
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Environment and local secret files (keep .env.example trackable)
+.env
+.env.*
+!.env.example
+*.json.secret
+*adminsdk*.json
+*firebase-adminsdk*.json
+*service-account*.json
+*service_account*.json
+serviceAccountKey.json
+*.pem
+*.key
+
+# Local SQLite databases and write-ahead logs
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.db-shm
+*.db-wal
 
 # Logs
 *.log
