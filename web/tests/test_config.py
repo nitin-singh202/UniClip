@@ -43,7 +43,7 @@ def test_production_config_validation_rejects_insecure_secret():
         FLASK_ENV = "production"
         SECRET_KEY = "dev-insecure-key-change-in-production"
         DEV_MOCK_AUTH = False
-        FIREBASE_API_KEY = "AIzaSyDummyKeyForProductionValidationCheck"
+        FIREBASE_API_KEY = "test-production-api-key"
 
     with pytest.raises(ValueError, match="Insecure or missing SECRET_KEY"):
         ProdInsecureConfig.validate()
@@ -55,7 +55,7 @@ def test_production_config_validation_rejects_missing_secret():
         FLASK_ENV = "production"
         SECRET_KEY = ""
         DEV_MOCK_AUTH = False
-        FIREBASE_API_KEY = "AIzaSyDummyKeyForProductionValidationCheck"
+        FIREBASE_API_KEY = "test-production-api-key"
 
     with pytest.raises(ValueError, match="Insecure or missing SECRET_KEY"):
         ProdMissingSecretConfig.validate()
@@ -67,7 +67,7 @@ def test_production_config_validation_rejects_dev_mock_auth():
         FLASK_ENV = "production"
         SECRET_KEY = "secure-random-32-byte-hex-secret-key"
         DEV_MOCK_AUTH = True
-        FIREBASE_API_KEY = "AIzaSyDummyKeyForProductionValidationCheck"
+        FIREBASE_API_KEY = "test-production-api-key"
 
     with pytest.raises(ValueError, match="DEV_MOCK_AUTH cannot be enabled in production"):
         ProdMockAuthConfig.validate()
@@ -91,7 +91,7 @@ def test_production_config_validation_passes_when_configured():
         FLASK_ENV = "production"
         SECRET_KEY = "secure-random-32-byte-hex-secret-key"
         DEV_MOCK_AUTH = False
-        FIREBASE_API_KEY = "AIzaSyDummyKeyForProductionValidationCheck"
+        FIREBASE_API_KEY = "test-production-api-key"
 
     # Should not raise
     ProdValidConfig.validate()

@@ -62,7 +62,7 @@ def test_4_secret_detection_rejects_sensitive_data(temp_db):
     secret_samples = [
         ("AWS Key", "AKIAIOSFODNN7EXAMPLE"),
         ("GitHub Token", "ghp_1234567890abcdefghijklmnopqrstuvwxyz"),
-        ("Google API Key", "AIzaSyDummyTestKeyForSecretDetection35c"),
+        ("Google API Key", "AIza" + "0" * 35),
         ("OpenAI Key", "sk-proj-abcdefghijklmnopqrstuvwxyz0123456789"),
         ("Private Key", "-----BEGIN RSA PRIVATE KEY-----\nMIIEogIBAAKCAQEA0..."),
         ("Labeled Password", "password = CorrectHorseBatteryStaple123!"),
